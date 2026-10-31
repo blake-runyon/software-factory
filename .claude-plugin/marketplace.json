@@ -1,0 +1,11 @@
+{
+  "name": "software-factory",
+  "owner": { "name": "Blake Runyon" },
+  "plugins": [
+    {
+      "name": "factory",
+      "source": "./plugin",
+      "description": "Staged, human-in-the-loop app building with enforced approval gates."
+    }
+  ]
+}

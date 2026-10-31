@@ -1,0 +1,7 @@
+{
+  "name": "factory",
+  "version": "0.1.0",
+  "description": "Software Factory: staged, human-in-the-loop app building (spec, plan, build, review) with enforced approval gates.",
+  "author": { "name": "Blake Runyon" },
+  "homepage": "https://github.com/blake-runyon/factory-starter"
+}

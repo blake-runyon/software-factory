@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Release a new version of the factory plugin.
+# Usage: bin/release [patch|minor|major] ["what changed"]
+#
+#   1. validates the plugin and runs its tests (stops on any failure)
+#   2. bumps the version in plugin/.claude-plugin/plugin.json
+#   3. commits and tags factory-v<version>
+#   4. pushes, if the repo has an `origin` remote
+#
+# On this machine the plugin is read straight from this folder, so you do not need a
+# release to try a change: edit, then run /reload-plugins in Claude Code.
+# A release is what other machines (installed from GitHub) pick up with
+# `claude plugin update factory@software-factory`.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+bump="${1:-patch}"
+notes="${2:-}"
+manifest="plugin/.claude-plugin/plugin.json"
+
+case "$bump" in patch|minor|major) ;; *) echo "usage: bin/release [patch|minor|major] [\"notes\"]" >&2; exit 1;; esac
+[[ -z "$(git status --porcelain -- . ':!plugin' ':!.claude-plugin')" ]] || { echo "error: commit or stash changes outside plugin/ first" >&2; exit 1; }
+
+echo "== validate"; claude plugin validate plugin >/dev/null
+echo "== test";     claude plugin test plugin | tail -3
+
+current="$(node -p "require('./$manifest').version")"
+next="$(node -e "
+  const [a,b,c] = '$current'.split('.').map(Number);
+  console.log({ major: [a+1,0,0], minor: [a,b+1,0], patch: [a,b,c+1] }['$bump'].join('.'));
+")"
+node -e "
+  const fs = require('fs'); const p = '$manifest';
+  const j = JSON.parse(fs.readFileSync(p, 'utf8')); j.version = '$next';
+  fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
+"
+
+git add plugin .claude-plugin
+git commit -q -m "release: factory plugin v$next${notes:+ — $notes}"
+git tag "factory-v$next"
+echo "== released factory v$current -> v$next"
+
+if git remote get-url origin >/dev/null 2>&1; then
+  git push -q origin HEAD --tags
+  echo "== pushed. Other machines: claude plugin update factory@software-factory"
+fi
+echo "== this machine: run /reload-plugins in any open Claude Code session"
